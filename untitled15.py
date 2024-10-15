@@ -7,6 +7,8 @@ Original file is located at
     https://colab.research.google.com/drive/19ZEionlWm6BtOWyT31nCFZk2jVGI74m2
 """
 
+
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,23 +17,15 @@ import seaborn as sns
 movies = pd.read_csv('movies.csv')
 ratings = pd.read_csv('ratings.csv')
 
-movies.head()
-
-ratings.head()
+print(movies.head())
+print(ratings.head())
 
 final_dataset = ratings.pivot(index="movieId", columns="userId", values="rating")
-
-final_dataset
-
 final_dataset.fillna(0, inplace=True)
 
-final_dataset.head()
+print(final_dataset.head())
 
-import matplotlib.pyplot as plt
-
-# Assuming 'final_dataset' is your DataFrame containing movie ratings
-no_user_voted = final_dataset.astype(bool).sum(axis=1) # Count users who rated each movie
-
+no_user_voted = final_dataset.astype(bool).sum(axis=1)
 plt.style.use("ggplot")
 fig, axes = plt.subplots(1, 1, figsize=(16, 4))
 plt.scatter(no_user_voted.index, no_user_voted, color="hotpink")
@@ -42,13 +36,7 @@ plt.show()
 
 final_dataset = final_dataset.loc[no_user_voted[no_user_voted > 10].index, :]
 
-final_dataset
-
-import matplotlib.pyplot as plt
-
-
 no_user_voted = final_dataset.astype(bool).sum(axis=1)
-
 plt.style.use("ggplot")
 fig, axes = plt.subplots(1, 1, figsize=(16, 4))
 plt.scatter(no_user_voted.index, no_user_voted, color="hotpink")
@@ -58,59 +46,45 @@ plt.ylabel("No of users voted")
 plt.show()
 
 no_movies_voted = final_dataset.astype(bool).sum(axis=0)
-
-
 final_dataset = final_dataset.loc[:, no_movies_voted[no_movies_voted > 50].index]
 
-final_dataset.shape
+print(final_dataset.shape)
+print(final_dataset.head())
 
-final_dataset.head()
-
-sample = np.array([[1,0,0,0,0], [0,0,2,0,0], [0,0,4,0,0]])
+sample = np.array([[1, 0, 0, 0, 0], [0, 0, 2, 0, 0], [0, 0, 4, 0, 0]])
 sparsity = 1.0 - (np.count_nonzero(sample) / float(sample.size))
-print(sparsity)
+print(f"Sparsity: {sparsity}")
 
 from scipy.sparse import csr_matrix
-csr_sample = csr_matrix(sample)
-print(csr_sample)
-
 csr_data = csr_matrix(final_dataset.values)
 final_dataset.reset_index(inplace=True)
 
 print(csr_data)
 
 from sklearn.neighbors import NearestNeighbors
-knn = NearestNeighbors(metric='cosine', algorithm = 'brute', n_neighbors = 20, n_jobs = -1)
-knn.fit(csr_data)
-
-NearestNeighbors(algorithm='brute', metric='cosine', n_jobs=-1, n_neighbors=20)
-
-movies
-
-import pandas as pd
-from sklearn.neighbors import NearestNeighbors
-
-
-movies = pd.read_csv('movies.csv')
-
 knn = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=20, n_jobs=-1)
 knn.fit(csr_data)
 
-def get_recommendation(movie_name):
-    movie_list = movies[movies['title'].str.contains(movie_name)]
+def get_recommendation():
+    movie_name = input("Enter a movie name for recommendations: ")
+    movie_list = movies[movies['title'].str.contains(movie_name, case=False, na=False)]
+    
     if len(movie_list):
         movie_idx = movie_list.iloc[0]['movieId']
         movie_idx = final_dataset[final_dataset['movieId'] == movie_idx].index[0]
         distance, indices = knn.kneighbors(csr_data[movie_idx], n_neighbors=11)
-        rec_movies_indices = sorted(list(zip(indices.squeeze().tolist(), distance.squeeze().tolist())), key=lambda x: x[1])[:0: -1]
+        rec_movies_indices = sorted(list(zip(indices.squeeze().tolist(), distance.squeeze().tolist())), key=lambda x: x[1])[:0:-1]
+        
         recommended_movies = []
         for val in rec_movies_indices:
             movie_idx = final_dataset.iloc[val[0]]['movieId']
             idx = movies[movies['movieId'] == movie_idx].index
             recommended_movies.append({'Title': movies.iloc[idx]['title'].values[0], 'Distance': val[1]})
+        
         df = pd.DataFrame(recommended_movies, index=range(1, 11))
         return df
     else:
         return "Movie not found..."
 
-get_recommendation("Toy Story")
+recommendations = get_recommendation()
+print(recommendations)
